@@ -1,0 +1,37 @@
+{
+    "$schema": "./node_modules/@pterodactyl/sdk/manifest.schema.json",
+    "id": "file-transfer",
+    "name": "File Transfer",
+    "version": "1.0.0",
+    "requires": {
+        "panel": "^2.0.0-dev",
+        "sdk": "^2.0.0-beta.4",
+        "php": "^8.3"
+    },
+    "description": "Import files from SFTP or FTP, export them, and copy files between servers.",
+    "author": "Izuna Seikatsu",
+    "provider": "FileTransfer\\FileTransferProvider",
+    "ui": {
+        "entry": "dist/client.js",
+        "mode": "native",
+        "prefix": "xfer",
+        "screens": [
+            {
+                "id": "transfer",
+                "area": "server",
+                "path": "transfer",
+                "nav": {
+                    "label": "Transfer",
+                    "icon": "arrow-left-right",
+                    "order": 44
+                },
+                "permission": [
+                    "ext.file-transfer.import",
+                    "ext.file-transfer.export",
+                    "ext.file-transfer.copy"
+                ]
+            }
+        ]
+    },
+    "icon": "arrow-left-right"
+}

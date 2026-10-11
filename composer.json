@@ -1,0 +1,11 @@
+{
+    "description": "Import files from SFTP or FTP, export them, and copy files between servers.",
+    "autoload": {
+        "psr-4": {
+            "FileTransfer\\": "src/"
+        }
+    },
+    "config": {
+        "autoloader-suffix": "FileTransferExtension"
+    }
+}
