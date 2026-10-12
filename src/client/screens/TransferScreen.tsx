@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-    Button,
     ServerContentBlock,
     Spinner,
     httpErrorToHuman,
@@ -17,6 +16,7 @@ import ExportForm from '../components/ExportForm';
 import HistoryBox from '../components/HistoryBox';
 import ImportForm from '../components/ImportForm';
 import ProgressBox from '../components/ProgressBox';
+import Tabs from '../components/Tabs';
 
 const MODES: { id: TransferType; label: string }[] = [
     { id: 'import', label: 'Import' },
@@ -96,19 +96,7 @@ export default function TransferScreen({ data }: ScreenComponentProps) {
                 <p className='xfer:text-sm xfer:text-muted-foreground'>Transfers are turned off for this server or you are missing the file permissions they need.</p>
             ) : (
                 <>
-                    <div role='tablist' aria-label='Transfer type' className='xfer:mb-6 xfer:flex xfer:flex-wrap xfer:gap-2'>
-                        {modes.map((candidate) =>
-                            candidate.id === current ? (
-                                <Button key={candidate.id} size='small' role='tab' aria-selected='true'>
-                                    {candidate.label}
-                                </Button>
-                            ) : (
-                                <Button.Text key={candidate.id} size='small' role='tab' aria-selected='false' onClick={() => setMode(candidate.id)}>
-                                    {candidate.label}
-                                </Button.Text>
-                            )
-                        )}
-                    </div>
+                    <Tabs label='Transfer type' tabs={modes} active={current ?? modes[0].id} onChange={setMode} />
                     {busy && <p className='xfer:mb-4 xfer:text-sm xfer:text-muted-foreground'>A new transfer can start once the running one is done.</p>}
                     {current === 'import' && <ImportForm overview={overview.data} {...remote} initialTarget={search.dir} busy={busy} onStarted={started} />}
                     {current === 'export' && <ExportForm overview={overview.data} {...remote} initialFolder={search.dir} initialFiles={search.files} busy={busy} onStarted={started} />}

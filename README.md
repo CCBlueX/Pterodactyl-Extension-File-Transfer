@@ -13,7 +13,7 @@ Move a server from another host over SFTP or FTP, back files up to your own stor
 
 1. Download `file-transfer-<version>.pteroext` from the [latest release](https://github.com/CCBlueX/Pterodactyl-Extension-File-Transfer/releases/latest).
 2. Install and enable it under **Admin → Extensions**.
-3. Open a server's **Transfer** tab, or use **Transfer** and **Export** in the file manager.
+3. Open a server's **Transfer** tab, or click **Transfer** next to **New folder** in the file manager. Tick files there and click **Export** to send just those.
 
 ## Features
 

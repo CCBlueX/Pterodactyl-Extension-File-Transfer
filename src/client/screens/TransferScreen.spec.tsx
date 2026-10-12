@@ -153,6 +153,17 @@ test('only offers what the user may do', async () => {
     await waitFor(() => expect(api.searchServers).toHaveBeenCalledWith('abcd1234', 'in', ''));
 });
 
+test('switches the transfer type with the tab bar', async () => {
+    renderScreen(overview(), { mode: 'export' });
+
+    const exporting = await screen.findByRole('tab', { name: 'Export' });
+    expect(exporting.getAttribute('aria-selected')).toBe('true');
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Import' }));
+    expect(screen.getByRole('tab', { name: 'Import' }).getAttribute('aria-selected')).toBe('true');
+    expect(exporting.getAttribute('aria-selected')).toBe('false');
+});
+
 test('reads the folder and files handed over by the file manager', () => {
     expect(readSearch({ mode: 'export', dir: '/plugins', files: ['a.jar', 5, 'b.yml'] })).toEqual({ mode: 'export', dir: '/plugins', files: ['a.jar', 'b.yml'] });
     expect(readSearch({ mode: 'bogus', dir: 'relative' })).toEqual({ mode: null, dir: '/', files: [] });
