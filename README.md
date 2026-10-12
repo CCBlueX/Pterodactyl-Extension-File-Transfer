@@ -23,7 +23,7 @@ Move a server from another host over SFTP or FTP, back files up to your own stor
 - **Runs in the background**: live progress, cancel at any time, and a history with every failed or skipped file.
 - **Safe**: logins are only stored, encrypted, while a transfer runs. Private and local addresses are blocked, and paths cannot leave the server.
 
-![Progress](docs/screenshots/progress.png)
+![Copy between servers](docs/screenshots/copy.png)
 
 ## Settings
 
