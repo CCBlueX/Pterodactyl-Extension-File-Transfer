@@ -1,34 +1,28 @@
+import { afterEach, expect, test } from 'vitest';
+import { cleanup, screen, waitFor } from '@testing-library/react';
 import type { ComponentProps } from 'react';
-import { afterEach, expect, test, vi } from 'vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
-import { createComponentTestHost, createTestFileManager, createTestServer } from '@pterodactyl/sdk/testing';
-import type { FileManagerSlotData } from '@pterodactyl/sdk';
+import { createExtensionTestHost, createTestServer, renderView } from '@pterodactyl/sdk/testing';
 import TransferLink from './TransferLink';
 
-let dispose: (() => void) | undefined;
+let rendered: { unmount: () => void } | undefined;
 
 afterEach(() => {
+    rendered?.unmount();
+    rendered = undefined;
     cleanup();
-    dispose?.();
-    dispose = undefined;
 });
 
-/** The panel's real file manager toolbar with our slot output right after it, as the panel renders it. */
-function renderToolbar(permissions = { create: true, update: true, delete: true, archive: true }) {
-    const model = createTestFileManager({ permissions });
-    const component = createComponentTestHost('server.files.manager', { extensionId: 'file-transfer', prefix: 'xfer', model });
-    const { Default, parts } = component.props;
-    const data: FileManagerSlotData = { server: createTestServer(), directory: '/plugins', files: [], selectedFiles: [], isFetching: false, setSelectedFiles: vi.fn(), refresh: vi.fn() };
-    const NativeToolbar = parts.toolbar;
-    const toolbar = (props: ComponentProps<typeof NativeToolbar>) => (
-        <>
-            <NativeToolbar {...props} />
-            <TransferLink data={data} />
-        </>
+/** The panel's real file manager with our component in the toolbar slot, as the panel renders it. */
+function renderToolbar(fixture: 'directory' | 'readOnly' = 'directory') {
+    const host = createExtensionTestHost({ extensionId: 'file-transfer', prefix: 'xfer', server: createTestServer() });
+    // The view renders the slot outside any server screen, so the test host provides the server context.
+    const InSlot = (props: ComponentProps<typeof TransferLink>) => (
+        <host.Wrapper>
+            <TransferLink {...props} />
+        </host.Wrapper>
     );
-    dispose = component.dispose;
-
-    return render(<Default parts={{ toolbar }} />, { wrapper: component.Wrapper });
+    const view = renderView('server.files.manager', { fixture, prefix: 'xfer', slots: { 'server.files.toolbar': InSlot } });
+    rendered = { unmount: () => (view.unmount(), host.dispose()) };
 }
 
 const findTransfer = () => waitFor(() => screen.getByRole('button', { name: 'Transfer' }));
@@ -44,7 +38,7 @@ function otherHost(order: number) {
 }
 
 test('sits first in the native button group, before New folder', async () => {
-    const { unmount } = renderToolbar();
+    renderToolbar();
 
     const transfer = await findTransfer();
     const folder = screen.getByRole('button', { name: 'New folder' });
@@ -56,7 +50,8 @@ test('sits first in the native button group, before New folder', async () => {
     expect(host.parentElement!.firstElementChild).toBe(host);
     expect(transfer.className).toContain('xfer:max-md:col-span-full!');
 
-    unmount();
+    rendered!.unmount();
+    rendered = undefined;
     expect(document.querySelector('[data-file-toolbar-host]')).toBeNull();
 });
 
@@ -78,7 +73,7 @@ test('lines up with the buttons of other extensions by their order', async () =>
 });
 
 test('stays in the slot when there is no button group', async () => {
-    renderToolbar({ create: false, update: false, delete: true, archive: true });
+    renderToolbar('readOnly');
 
     const transfer = await screen.findByRole('button', { name: 'Transfer' });
 
