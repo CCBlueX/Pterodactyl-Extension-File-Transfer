@@ -1,4 +1,4 @@
-import { Checkbox, NamedIcon, Table, Tooltip, httpErrorToHuman } from '@pterodactyl/sdk';
+import { Button, Checkbox, NamedIcon, Table, Tooltip, httpErrorToHuman } from '@pterodactyl/sdk';
 import type { Entry } from '../api';
 import { formatBytes, joinPath } from '../lib/format';
 
@@ -47,9 +47,9 @@ export default function Browser({ path, entries, loading, error, onOpen, selecte
                                 {onSelect && <Tick entry={entry} checked={ticked.includes(entry.name)} onChange={(checked) => toggle(entry.name, checked)} />}
                                 <NamedIcon name={entry.link ? 'link' : entry.directory ? 'folder' : 'file'} className='xfer:h-4 xfer:w-4 xfer:shrink-0 xfer:text-muted-foreground' />
                                 {entry.directory && !entry.link ? (
-                                    <button type='button' className='xfer:truncate xfer:text-left xfer:text-foreground xfer:hover:underline' onClick={() => onOpen(joinPath(path, entry.name))}>
+                                    <Button.Text size='xsmall' className='xfer:min-w-0 xfer:truncate' onClick={() => onOpen(joinPath(path, entry.name))}>
                                         {entry.name}
-                                    </button>
+                                    </Button.Text>
                                 ) : (
                                     <span className='xfer:truncate xfer:text-foreground'>{entry.name}</span>
                                 )}
@@ -82,15 +82,15 @@ function Breadcrumbs({ path, onOpen }: { path: string; onOpen: (path: string) =>
 
     return (
         <nav aria-label='Folder' className='xfer:flex xfer:min-w-0 xfer:flex-wrap xfer:items-center xfer:gap-1 xfer:font-mono xfer:text-sm xfer:text-muted-foreground'>
-            <button type='button' aria-label='Top folder' className='xfer:inline-flex xfer:items-center xfer:hover:text-foreground' onClick={() => onOpen('/')}>
+            <Button.Text size='xsmall' aria-label='Top folder' onClick={() => onOpen('/')}>
                 <NamedIcon name='house' className='xfer:h-4 xfer:w-4' />
-            </button>
+            </Button.Text>
             {parts.map((part, index) => (
                 <span key={index} className='xfer:inline-flex xfer:items-center xfer:gap-1'>
                     <span>/</span>
-                    <button type='button' className='xfer:hover:text-foreground' onClick={() => onOpen(`/${parts.slice(0, index + 1).join('/')}`)}>
+                    <Button.Text size='xsmall' className='xfer:font-mono' onClick={() => onOpen(`/${parts.slice(0, index + 1).join('/')}`)}>
                         {part}
-                    </button>
+                    </Button.Text>
                 </span>
             ))}
         </nav>

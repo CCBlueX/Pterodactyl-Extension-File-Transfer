@@ -3,6 +3,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { Button, Label, Select, Switch, TitledGreyBox, httpErrorToHuman, toast, useCurrentServerRequired } from '@pterodactyl/sdk';
 import { keys, searchServers, startCopy, type Overview, type ServerOption, type Transfer } from '../api';
 import { formatBytes, plural } from '../lib/format';
+import FiltersField, { filterInput, noFilters } from './FiltersField';
 import FolderField from './FolderField';
 import ServerBrowser from './ServerBrowser';
 
@@ -25,6 +26,7 @@ export default function CopyForm({ overview, initialFolder, initialFiles, busy, 
     const [selected, setSelected] = useState<string[]>(direction === 'out' ? initialFiles : []);
     const [target, setTarget] = useState(direction === 'in' ? initialFolder : '/');
     const [overwrite, setOverwrite] = useState(false);
+    const [filters, setFilters] = useState(noFilters);
 
     const servers = useQuery({ queryKey: keys.servers(identifier, direction, search), queryFn: () => searchServers(identifier, direction, search), placeholderData: (previous) => previous });
     const options = [...(other ? [other] : []), ...(servers.data ?? []).filter((server) => server.identifier !== other?.identifier)];
@@ -33,7 +35,7 @@ export default function CopyForm({ overview, initialFolder, initialFiles, busy, 
 
     const turn = (next: Direction) => (setDirection(next), setOther(null), setFolder('/'), setSelected([]), setTarget('/'));
     const start = useMutation({
-        mutationFn: () => startCopy(identifier, { direction, server: other!.identifier, root: folder, selection: selected, target, overwrite }),
+        mutationFn: () => startCopy(identifier, { direction, server: other!.identifier, root: folder, selection: selected, target, overwrite, ...filterInput(filters) }),
         onSuccess: (transfer) => (toast.success('The copy started.'), onStarted(transfer)),
         onError: (error) => toast.error(httpErrorToHuman(error)),
     });
@@ -82,6 +84,7 @@ export default function CopyForm({ overview, initialFolder, initialFiles, busy, 
                 <TitledGreyBox title={direction === 'in' ? 'Copy into this server' : `Copy into ${other?.name ?? 'the other server'}`}>
                     <div className='xfer:grid xfer:gap-4'>
                         {targetServer && <FolderField id='xfer-copy-target' label='Target folder' server={targetServer} value={target} onChange={setTarget} />}
+                        <FiltersField id='xfer-copy-filters' value={filters} onChange={setFilters} />
                         <Switch checked={overwrite} onChange={setOverwrite} label='Overwrite existing files' description='Otherwise files that already exist are skipped.' />
                         <div className='xfer:flex xfer:flex-wrap xfer:items-center xfer:justify-between xfer:gap-3'>
                             <p className='xfer:text-xs xfer:text-muted-foreground'>

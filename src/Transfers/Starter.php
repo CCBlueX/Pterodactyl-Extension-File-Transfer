@@ -12,6 +12,7 @@ use FileTransfer\Remote\Endpoint;
 use FileTransfer\Settings;
 use FileTransfer\Support\Cursor;
 use FileTransfer\Support\Entry;
+use FileTransfer\Support\Patterns;
 use Illuminate\Support\Facades\Cache;
 use Pterodactyl\Models\Server;
 use Pterodactyl\Models\User;
@@ -29,8 +30,12 @@ final readonly class Starter
      * @param  list<string>  $selection
      * @param  array{overwrite: bool, wipe: bool, archive: bool}  $options
      */
-    public function import(User $user, Server $server, Endpoint $endpoint, string $remoteRoot, array $selection, string $target, array $options): Transfer
+    public function import(User $user, Server $server, Endpoint $endpoint, string $remoteRoot, array $selection, string $target, array $options, Patterns $patterns = new Patterns): Transfer
     {
+        if ($options['wipe'] && ($problem = $this->panel->running($server)) !== null) {
+            throw new HttpException(409, $problem);
+        }
+
         $client = $this->clients->open($endpoint);
 
         try {
@@ -41,7 +46,7 @@ final readonly class Starter
             $client->close();
         }
 
-        return $this->create([$server], function () use ($user, $server, $endpoint, $remoteRoot, $selection, $target, $options, $fingerprint): Transfer {
+        return $this->create([$server], function () use ($user, $server, $endpoint, $remoteRoot, $selection, $target, $options, $fingerprint, $patterns): Transfer {
             $archive = null;
 
             if ($options['wipe'] && $options['archive'] && $this->panel->exists($server, $target)) {
@@ -62,7 +67,7 @@ final readonly class Starter
                 'source_root' => $remoteRoot,
                 'selection' => $selection,
                 'target_root' => $target,
-                'options' => ['overwrite' => $options['overwrite'], 'wipe' => $options['wipe'], 'archive' => $archive !== null],
+                'options' => ['overwrite' => $options['overwrite'], 'wipe' => $options['wipe'], 'archive' => $archive !== null] + $this->filters($patterns),
                 'archive' => $archive,
             ], $options['wipe']);
 
@@ -76,13 +81,13 @@ final readonly class Starter
      * @param  list<string>  $selection
      * @param  array{overwrite: bool, archive: bool}  $options
      */
-    public function export(User $user, Server $server, Endpoint $endpoint, string $root, array $selection, string $remoteTarget, array $options): Transfer
+    public function export(User $user, Server $server, Endpoint $endpoint, string $root, array $selection, string $remoteTarget, array $options, Patterns $patterns = new Patterns): Transfer
     {
         $client = $this->clients->open($endpoint);
         $fingerprint = $client->fingerprint();
         $client->close();
 
-        return $this->create([$server], function () use ($user, $server, $endpoint, $root, $selection, $remoteTarget, $options, $fingerprint): Transfer {
+        return $this->create([$server], function () use ($user, $server, $endpoint, $root, $selection, $remoteTarget, $options, $fingerprint, $patterns): Transfer {
             $archive = null;
 
             if ($options['archive']) {
@@ -108,7 +113,7 @@ final readonly class Starter
                 'source_root' => $root,
                 'selection' => $archive !== null ? [$archive] : $selection,
                 'target_root' => $remoteTarget,
-                'options' => ['overwrite' => $options['overwrite'], 'archive' => $archive !== null, 'delete_archive' => $archive !== null],
+                'options' => ['overwrite' => $options['overwrite'], 'archive' => $archive !== null, 'delete_archive' => $archive !== null] + $this->filters($patterns),
                 'archive' => $archive,
             ], false);
 
@@ -119,9 +124,9 @@ final readonly class Starter
     }
 
     /** @param list<string> $selection */
-    public function copy(User $user, Server $source, Server $target, string $root, array $selection, string $targetRoot, bool $overwrite): Transfer
+    public function copy(User $user, Server $source, Server $target, string $root, array $selection, string $targetRoot, bool $overwrite, Patterns $patterns = new Patterns): Transfer
     {
-        return $this->create([$source, $target], function () use ($user, $source, $target, $root, $selection, $targetRoot, $overwrite): Transfer {
+        return $this->create([$source, $target], function () use ($user, $source, $target, $root, $selection, $targetRoot, $overwrite, $patterns): Transfer {
             $transfer = $this->store([
                 'type' => 'copy',
                 'user_id' => $user->id,
@@ -130,7 +135,7 @@ final readonly class Starter
                 'source_root' => $root,
                 'selection' => $selection,
                 'target_root' => $targetRoot,
-                'options' => ['overwrite' => $overwrite],
+                'options' => ['overwrite' => $overwrite] + $this->filters($patterns),
             ], false);
 
             $this->panel->log('server:file.pull', [$target, $source], ['directory' => $targetRoot, 'url' => "{$source->name}:".$this->describe($root, $selection)]);
@@ -196,6 +201,12 @@ final readonly class Starter
             1 => "{$base}/{$selection[0]}",
             default => sprintf('%s (%d items)', $root, count($selection)),
         };
+    }
+
+    /** @return array{include?: list<string>, exclude?: list<string>} */
+    private function filters(Patterns $patterns): array
+    {
+        return array_filter(['include' => $patterns->include, 'exclude' => $patterns->exclude]);
     }
 
     private function size(int $bytes): string

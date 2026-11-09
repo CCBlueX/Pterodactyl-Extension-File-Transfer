@@ -18,7 +18,7 @@ export interface Transfer {
     source: Side;
     target: Side;
     selection: string[];
-    options: { overwrite: boolean; wipe: boolean; archive: boolean };
+    options: { overwrite: boolean; wipe: boolean; archive: boolean; include?: string[]; exclude?: string[] };
     archive: string | null;
     files: { total: number; ok: number; failed: number; skipped: number };
     bytes: { total: number; done: number };
@@ -77,12 +77,17 @@ export interface ServerOption {
 export interface Selection {
     root: string;
     selection: string[];
+    include?: string[];
+    exclude?: string[];
 }
 
 const base = (id: string) => `/api/client/servers/${id}/extensions/file-transfer`;
 
 /** Archives are created before a transfer starts, which can take a few minutes. */
 const START_TIMEOUT = 300_000;
+
+/** Slow hosts may take up to the admin's connection timeout (at most 120 seconds) to connect and log in. */
+const REMOTE_TIMEOUT = 260_000;
 
 export const keys = {
     overview: (id: string) => ['file-transfer', id] as const,
@@ -95,8 +100,8 @@ export const getOverview = async (id: string) => (await http.get<Overview>(base(
 export const getTransfer = async (id: string, transfer: number) => (await http.get<TransferDetail>(`${base(id)}/transfers/${transfer}`)).data;
 export const cancelTransfer = async (id: string, transfer: number) => (await http.post<Transfer>(`${base(id)}/transfers/${transfer}/cancel`)).data;
 
-export const testConnection = async (id: string, connection: Connection) => (await http.post<{ home: string; fingerprint: string | null }>(`${base(id)}/remote/test`, connection)).data;
-export const listRemote = async (id: string, connection: Connection, path: string) => (await http.post<{ path: string; entries: Entry[] }>(`${base(id)}/remote/list`, { ...connection, path })).data;
+export const testConnection = async (id: string, connection: Connection) => (await http.post<{ home: string; fingerprint: string | null }>(`${base(id)}/remote/test`, connection, { timeout: REMOTE_TIMEOUT })).data;
+export const listRemote = async (id: string, connection: Connection, path: string) => (await http.post<{ path: string; entries: Entry[] }>(`${base(id)}/remote/list`, { ...connection, path }, { timeout: REMOTE_TIMEOUT })).data;
 
 export const searchServers = async (id: string, direction: 'in' | 'out', search: string) =>
     (await http.get<{ data: ServerOption[] }>(`${base(id)}/servers`, { params: { direction, search } })).data.data;

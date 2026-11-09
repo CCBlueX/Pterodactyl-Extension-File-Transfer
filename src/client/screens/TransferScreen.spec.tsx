@@ -1,5 +1,6 @@
 import { afterEach, expect, test, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { serverResourcesQueryOptions } from '@pterodactyl/sdk';
 import { createExtensionTestHost, createTestServer } from '@pterodactyl/sdk/testing';
 import * as api from '../api';
 import TransferScreen, { readSearch } from './TransferScreen';
@@ -57,10 +58,14 @@ const overview = (changes: Partial<api.Overview> = {}): api.Overview => ({
     ...changes,
 });
 
-function renderScreen(data: api.Overview, search: Record<string, unknown> = {}) {
+function renderScreen(data: api.Overview, search: Record<string, unknown> = {}, state: 'running' | 'offline' | 'stopped' | 'starting' | 'stopping' = 'offline') {
     vi.mocked(api.getOverview).mockResolvedValue(data);
     const server = createTestServer({ owner: true, identifier: 'abcd1234', name: 'Survival' });
     host = createExtensionTestHost({ extensionId: 'file-transfer', prefix: 'xfer', server });
+    host.queryClient.setQueryData(serverResourcesQueryOptions(server.attributes.uuid).queryKey, {
+        object: 'stats',
+        attributes: { current_state: state, is_suspended: false, resources: { memory_bytes: 0, cpu_absolute: 0, disk_bytes: 0, network_rx_bytes: 0, network_tx_bytes: 0, uptime: 0 } },
+    });
     render(<TransferScreen data={{ pathname: '', search, params: { id: 'abcd1234' } }} />, { wrapper: host.Wrapper });
 }
 
@@ -106,13 +111,14 @@ test('tests the connection, browses the remote server and starts an import of th
 
     fireEvent.click(screen.getByLabelText('Select server.jar'));
     expect(screen.getByText(/1 item from \/home\/foo/)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Skip'), { target: { value: 'logs/, *.log ,' } });
     expect((screen.getByLabelText('Target folder') as HTMLInputElement).value).toBe('/plugins');
 
     fireEvent.click(screen.getByRole('button', { name: 'Start import' }));
     await waitFor(() =>
         expect(api.startImport).toHaveBeenCalledWith(
             'abcd1234',
-            expect.objectContaining({ root: '/home/foo', selection: ['server.jar'], target: '/plugins', fingerprint: 'SHA256:abc', wipe: false, overwrite: false })
+            expect.objectContaining({ root: '/home/foo', selection: ['server.jar'], target: '/plugins', fingerprint: 'SHA256:abc', wipe: false, overwrite: false, include: [], exclude: ['logs/', '*.log'] })
         )
     );
 });
@@ -142,13 +148,29 @@ test('wiping the target folder needs the server name typed in', async () => {
     await waitFor(() => expect(api.startImport).toHaveBeenCalledWith('abcd1234', expect.objectContaining({ wipe: true, archive: true, confirm: 'Survival', root: '/', selection: [] })));
 });
 
+test('wiping waits until the server is stopped', async () => {
+    vi.mocked(api.testConnection).mockResolvedValue({ home: '/', fingerprint: null });
+    vi.mocked(api.listRemote).mockResolvedValue({ path: '/', entries: [] });
+    renderScreen(overview(), {}, 'running');
+
+    fireEvent.change(await screen.findByLabelText('Host'), { target: { value: 'files.example.com' } });
+    fireEvent.change(screen.getByLabelText('Username'), { target: { value: 'foo' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Test connection' }));
+    expect(await screen.findByText('This folder is empty.')).toBeTruthy();
+    expect((screen.getByRole('button', { name: 'Start import' }) as HTMLButtonElement).disabled).toBe(false);
+
+    fireEvent.click(screen.getByRole('switch', { name: /Wipe the target folder first/ }));
+    expect(screen.getByText('Stop the server before wiping the folder. It is running right now.')).toBeTruthy();
+    expect((screen.getByRole('button', { name: 'Start import' }) as HTMLButtonElement).disabled).toBe(true);
+});
+
 test('only offers what the user may do', async () => {
     vi.mocked(api.searchServers).mockResolvedValue([{ identifier: 'lobby123', name: 'Lobby', node: 'Dev Node' }]);
     renderScreen(overview({ features: { import: false, export: false, copy: true }, can: { wipe: false, archive: false, read: false, write: true } }));
 
     expect(await screen.findByRole('tab', { name: 'Between servers' })).toBeTruthy();
     expect(screen.queryByRole('tab', { name: 'Import' })).toBeNull();
-    expect(screen.getByText('No transfers yet.')).toBeTruthy();
+    expect(screen.getByText('No transfers yet')).toBeTruthy();
     expect(screen.getByText('Pick the server to copy from.')).toBeTruthy();
     await waitFor(() => expect(api.searchServers).toHaveBeenCalledWith('abcd1234', 'in', ''));
 });

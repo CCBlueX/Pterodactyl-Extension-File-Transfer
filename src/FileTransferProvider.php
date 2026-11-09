@@ -44,8 +44,9 @@ class FileTransferProvider extends ExtensionProvider
                 ->label('Largest file for copies between servers (MiB)')
                 ->help('Copies are streamed through the panel: read from one node and written to the other, each within about 40 seconds.')
                 ->field('number'),
-            ExtensionSettingDefinition::make('connect_timeout', 'connect_timeout', 10, ['required', 'integer', 'min:3', 'max:60'])
+            ExtensionSettingDefinition::make('connect_timeout', 'connect_timeout', Settings::CONNECT_TIMEOUT, ['required', 'integer', 'min:3', 'max:'.Settings::MAX_CONNECT_TIMEOUT])
                 ->label('Connection timeout (seconds)')
+                ->help('How long to wait for a slow SFTP or FTP host when testing, browsing and starting, up to 120 seconds. Running transfers wait at most 15 seconds per connection and retry.')
                 ->field('number'),
             ExtensionSettingDefinition::make('allow_private_hosts', 'allow_private_hosts', false, ['boolean'])
                 ->label('Allow private and local hosts')

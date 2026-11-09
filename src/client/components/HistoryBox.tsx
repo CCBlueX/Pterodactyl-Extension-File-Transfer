@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button, Table, TitledGreyBox } from '@pterodactyl/sdk';
+import { Button, Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle, NamedIcon, Table, TitledGreyBox } from '@pterodactyl/sdk';
 import type { Transfer } from '../api';
 import { describe, formatBytes, formatDuration } from '../lib/format';
 import { StatusPill } from './Pill';
@@ -13,7 +13,17 @@ export default function HistoryBox({ history, current }: { history: Transfer[]; 
             <Table
                 rows={history}
                 keyOf={(transfer) => String(transfer.id)}
-                emptyState='No transfers yet.'
+                emptyState={
+                    <Empty>
+                        <EmptyHeader>
+                            <EmptyMedia variant='icon'>
+                                <NamedIcon name='history' />
+                            </EmptyMedia>
+                            <EmptyTitle>No transfers yet</EmptyTitle>
+                            <EmptyDescription>Imports, exports and copies show up here once they start.</EmptyDescription>
+                        </EmptyHeader>
+                    </Empty>
+                }
                 columns={[
                     {
                         id: 'transfer',

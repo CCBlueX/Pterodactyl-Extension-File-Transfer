@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button, Dialog, TitledGreyBox } from '@pterodactyl/sdk';
+import { Button, Dialog, ProgressBar, Stat, TitledGreyBox } from '@pterodactyl/sdk';
 import type { Transfer } from '../api';
 import { STEP_LABELS, describe, formatBytes, formatDuration, plural } from '../lib/format';
 import { StatusPill } from './Pill';
@@ -35,26 +35,17 @@ export default function ProgressBox({ transfer, current, canCancel, cancelling, 
                     )}
                 </div>
                 <div>
-                    <div
-                        className='xfer:h-2 xfer:w-full xfer:overflow-hidden xfer:rounded-sm xfer:bg-sunken'
-                        role='progressbar'
-                        aria-label='Progress'
-                        aria-valuemin={0}
-                        aria-valuemax={100}
-                        aria-valuenow={scanning ? undefined : percent}
-                    >
-                        <div className={`xfer:h-2 xfer:rounded-sm xfer:bg-primary ${scanning ? 'xfer:animate-pulse' : ''}`} style={{ width: scanning ? '100%' : `${percent}%` }} />
-                    </div>
+                    <ProgressBar value={scanning ? null : percent} label='Progress' className={scanning ? 'xfer:animate-pulse' : undefined} />
                     <p className='xfer:mt-2 xfer:text-xs xfer:text-muted-foreground'>
                         {scanning ? `Found ${plural(files.total, 'file')} so far.` : `${done.toLocaleString()} of ${plural(files.total, 'file')}, ${formatBytes(bytes.done)} of ${formatBytes(bytes.total)}.`}
                     </p>
                 </div>
-                <dl className='xfer:grid xfer:grid-cols-2 xfer:gap-3 xfer:text-sm xfer:sm:grid-cols-4'>
-                    <Stat label='Copied' value={files.ok.toLocaleString()} />
-                    <Stat label='Failed' value={files.failed.toLocaleString()} tone={files.failed > 0 ? 'xfer:text-destructive' : undefined} />
-                    <Stat label='Skipped' value={files.skipped.toLocaleString()} />
-                    <Stat label='Elapsed' value={formatDuration(transfer.elapsed)} />
-                </dl>
+                <div className='xfer:grid xfer:grid-cols-2 xfer:gap-3 xfer:sm:grid-cols-4'>
+                    <Stat variant='inline' label='Copied' value={files.ok.toLocaleString()} />
+                    <Stat variant='inline' label='Failed' value={files.failed.toLocaleString()} tone={files.failed > 0 ? 'danger' : undefined} />
+                    <Stat variant='inline' label='Skipped' value={files.skipped.toLocaleString()} />
+                    <Stat variant='inline' label='Elapsed' value={formatDuration(transfer.elapsed)} />
+                </div>
                 {transfer.current_path && (
                     <p className='xfer:truncate xfer:font-mono xfer:text-xs xfer:text-muted-foreground' title={transfer.current_path}>
                         {transfer.current_path}
@@ -76,11 +67,3 @@ export default function ProgressBox({ transfer, current, canCancel, cancelling, 
     );
 }
 
-function Stat({ label, value, tone }: { label: string; value: string; tone?: string }) {
-    return (
-        <div className='xfer:rounded-sm xfer:bg-sunken xfer:px-3 xfer:py-2'>
-            <dt className='xfer:text-xs xfer:text-muted-foreground'>{label}</dt>
-            <dd className={`xfer:font-medium ${tone ?? 'xfer:text-foreground'}`}>{value}</dd>
-        </div>
-    );
-}

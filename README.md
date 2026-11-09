@@ -17,9 +17,10 @@ Move a server from another host over SFTP or FTP, back files up to your own stor
 
 ## Features
 
-- **Import**: log in to an SFTP, FTP or FTPS server, browse it, tick files or take a whole folder. Optionally wipe the target folder first, with an archive of the old files.
+- **Import**: log in to an SFTP, FTP or FTPS server, browse it, tick files or take a whole folder. Optionally wipe the target folder first (server must be stopped), with an archive of the old files.
 - **Export**: send files or folders to an SFTP or FTP server, one by one or as a single archive.
 - **Between servers**: copy files to or from any server you can manage files on, on the same or another node.
+- **Filters**: copy only files matching patterns like `*.jar` or `world/**`, and skip others like `logs/` or `*.tmp`.
 - **Runs in the background**: live progress, cancel at any time, and a history with every failed or skipped file.
 - **Safe**: logins are only stored, encrypted, while a transfer runs. Private and local addresses are blocked, and paths cannot leave the server.
 

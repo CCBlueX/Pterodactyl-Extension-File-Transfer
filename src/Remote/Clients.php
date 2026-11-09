@@ -14,7 +14,8 @@ final readonly class Clients
 {
     public function __construct(private Settings $settings) {}
 
-    public function open(Endpoint $endpoint): Client
+    /** @param int|null $timeout Seconds to wait for the host, the admin setting when null. */
+    public function open(Endpoint $endpoint, ?int $timeout = null): Client
     {
         if (! in_array($endpoint->protocol, $this->settings->protocols(), true)) {
             throw RemoteException::connection('This protocol is turned off by the administrator.');
@@ -26,7 +27,7 @@ final readonly class Clients
             throw RemoteException::connection((string) $problem);
         }
 
-        $timeout = $this->settings->connectTimeout();
+        $timeout ??= $this->settings->connectTimeout();
 
         return $endpoint->protocol === 'sftp'
             ? SftpClient::connect($endpoint, $address, $timeout)

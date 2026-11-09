@@ -12,6 +12,7 @@ use FileTransfer\Remote\Endpoint;
 use FileTransfer\Remote\RemoteException;
 use FileTransfer\Settings;
 use FileTransfer\Support\Paths;
+use FileTransfer\Support\Patterns;
 use FileTransfer\Transfers\Starter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -115,6 +116,7 @@ final readonly class TransferController
             $this->selection($data),
             $this->path($data['target']),
             ['overwrite' => (bool) ($data['overwrite'] ?? false), 'wipe' => $wipe, 'archive' => $archive],
+            $this->patterns($data),
         ));
     }
 
@@ -131,6 +133,8 @@ final readonly class TransferController
 
         $archive = (bool) ($data['archive'] ?? false);
         abort_if($archive && ! $user->can('file.archive', $server), 403, 'Exporting as an archive needs the permission to create archives.');
+        $patterns = $this->patterns($data);
+        abort_if($archive && ! $patterns->empty(), 422, 'Filters cannot be used when exporting as an archive.');
 
         return $this->started(fn (): Transfer => $this->starter->export(
             $user,
@@ -140,6 +144,7 @@ final readonly class TransferController
             $this->selection($data),
             $this->path($data['target']),
             ['overwrite' => (bool) ($data['overwrite'] ?? false), 'archive' => $archive],
+            $patterns,
         ));
     }
 
@@ -170,6 +175,7 @@ final readonly class TransferController
             $this->selection($data),
             $this->path($data['target']),
             (bool) ($data['overwrite'] ?? false),
+            $this->patterns($data),
         ));
     }
 
@@ -198,6 +204,10 @@ final readonly class TransferController
             'root' => ['required', 'string', 'max:4096'],
             'selection' => ['present', 'array', 'max:'.self::MAX_SELECTION],
             'selection.*' => ['string', 'max:255'],
+            'include' => ['nullable', 'array', 'max:'.Patterns::MAX],
+            'include.*' => ['nullable', 'string', 'max:'.Patterns::MAX_LENGTH],
+            'exclude' => ['nullable', 'array', 'max:'.Patterns::MAX],
+            'exclude.*' => ['nullable', 'string', 'max:'.Patterns::MAX_LENGTH],
         ];
     }
 
@@ -219,6 +229,16 @@ final readonly class TransferController
         abort_if($names === null, 422, 'The selection contains a name that is not allowed.');
 
         return $names;
+    }
+
+    /** @param array<string, mixed> $data */
+    private function patterns(array $data): Patterns
+    {
+        $include = Patterns::clean(array_values(array_filter((array) ($data['include'] ?? []), static fn (mixed $pattern): bool => $pattern !== null)));
+        $exclude = Patterns::clean(array_values(array_filter((array) ($data['exclude'] ?? []), static fn (mixed $pattern): bool => $pattern !== null)));
+        abort_if($include === null || $exclude === null, 422, 'A filter pattern is not allowed.');
+
+        return new Patterns($include, $exclude);
     }
 
     private function find(Server $server, int $id): Transfer

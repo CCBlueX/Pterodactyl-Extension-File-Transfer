@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Button, Dialog, Spinner, httpErrorToHuman, useCurrentServerRequired } from '@pterodactyl/sdk';
+import { Button, Dialog, Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle, NamedIcon, Spinner, httpErrorToHuman, useCurrentServerRequired } from '@pterodactyl/sdk';
 import { getTransfer, keys, type Transfer } from '../api';
 import { describe } from '../lib/format';
 
@@ -22,6 +22,18 @@ export default function TransferDialog({ transfer, current, onClose }: { transfe
                             <dd className='xfer:break-all xfer:font-mono xfer:text-xs'>{transfer.archive}</dd>
                         </>
                     )}
+                    {(transfer.options.include ?? []).length > 0 && (
+                        <>
+                            <dt className='xfer:text-muted-foreground'>Only</dt>
+                            <dd className='xfer:break-all xfer:font-mono xfer:text-xs'>{transfer.options.include!.join(', ')}</dd>
+                        </>
+                    )}
+                    {(transfer.options.exclude ?? []).length > 0 && (
+                        <>
+                            <dt className='xfer:text-muted-foreground'>Skipped</dt>
+                            <dd className='xfer:break-all xfer:font-mono xfer:text-xs'>{transfer.options.exclude!.join(', ')}</dd>
+                        </>
+                    )}
                 </dl>
                 {transfer.error && <p className='xfer:text-destructive'>{transfer.error}</p>}
                 {detail.isLoading ? (
@@ -29,7 +41,17 @@ export default function TransferDialog({ transfer, current, onClose }: { transfe
                 ) : detail.isError ? (
                     <p className='xfer:text-destructive'>{httpErrorToHuman(detail.error)}</p>
                 ) : problems.length === 0 ? (
-                    <p className='xfer:text-muted-foreground'>{transfer.files.failed + transfer.files.skipped === 0 ? 'Every file was copied.' : 'No file details were kept.'}</p>
+                    <Empty>
+                        <EmptyHeader>
+                            <EmptyMedia variant='icon'>
+                                <NamedIcon name={transfer.files.failed + transfer.files.skipped === 0 ? 'circle-check' : 'file-question'} />
+                            </EmptyMedia>
+                            <EmptyTitle>{transfer.files.failed + transfer.files.skipped === 0 ? 'Every file was copied' : 'No file details'}</EmptyTitle>
+                            <EmptyDescription>
+                                {transfer.files.failed + transfer.files.skipped === 0 ? 'Nothing failed or was skipped.' : 'The list of failed and skipped files was not kept.'}
+                            </EmptyDescription>
+                        </EmptyHeader>
+                    </Empty>
                 ) : (
                     <ul className='xfer:max-h-72 xfer:divide-y xfer:divide-border xfer:overflow-y-auto xfer:rounded-sm xfer:bg-sunken'>
                         {problems.map((problem, index) => (

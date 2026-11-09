@@ -24,7 +24,7 @@ final class Session
     /** @var array<string, true> */
     private array $folders = [];
 
-    public function __construct(private readonly Transfer $transfer, private readonly Clients $clients) {}
+    public function __construct(private readonly Transfer $transfer, private readonly Clients $clients, private readonly int $connectTimeout) {}
 
     public static function directory(int $transfer): string
     {
@@ -43,7 +43,7 @@ final class Session
                 throw RemoteException::connection('The login details are gone. Start the transfer again.');
             }
 
-            $this->client = $this->clients->open(Endpoint::fromStored($this->transfer->remote, $this->transfer->credentials));
+            $this->client = $this->clients->open(Endpoint::fromStored($this->transfer->remote, $this->transfer->credentials), $this->connectTimeout);
         }
 
         return $this->client;

@@ -12,6 +12,7 @@ use Pterodactyl\Contracts\Files\CompressesFiles;
 use Pterodactyl\Contracts\Files\CreatesDirectories;
 use Pterodactyl\Contracts\Files\DeletesFiles;
 use Pterodactyl\Contracts\Files\ListsDirectories;
+use Pterodactyl\Contracts\Servers\ReadsServerState;
 use Pterodactyl\Exceptions\Http\Connection\DaemonConnectionException;
 use Pterodactyl\Facades\Activity;
 use Pterodactyl\Models\Server;
@@ -34,6 +35,7 @@ final readonly class Panel
         private CreatesDirectories $directories,
         private DeletesFiles $deleter,
         private CompressesFiles $compressor,
+        private ReadsServerState $state,
     ) {}
 
     /** The identifier the client API and the frontend use for a server. */
@@ -75,6 +77,18 @@ final readonly class Panel
         }
 
         return null;
+    }
+
+    /** Why the server is not stopped, or null once it is offline. */
+    public function running(Server $server): ?string
+    {
+        try {
+            $state = $this->state->read($server)->state;
+        } catch (Throwable $exception) {
+            return "Could not check whether {$server->name} is stopped. ".$this->problem($exception, 'read the power state');
+        }
+
+        return in_array($state, ['offline', 'stopped'], true) ? null : "Stop {$server->name} before wiping the folder. It is {$state} right now.";
     }
 
     /**

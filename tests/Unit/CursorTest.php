@@ -122,6 +122,7 @@ final class CursorTest extends TestCase
         $this->assertSame([
             'files' => [['path' => 'plugins/server.jar', 'size' => 100]],
             'folders' => ['plugins/world'],
+            'create' => ['plugins/world'],
             'skipped' => [
                 ['path' => 'plugins/..', 'reason' => 'The name is not supported.'],
                 ['path' => 'plugins/bad/name', 'reason' => 'The name is not supported.'],

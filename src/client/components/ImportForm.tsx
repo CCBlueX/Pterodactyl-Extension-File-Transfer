@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { Button, Switch, TitledGreyBox, httpErrorToHuman, toast, useCurrentServerRequired } from '@pterodactyl/sdk';
+import { Button, Switch, TitledGreyBox, httpErrorToHuman, toast, useCurrentServerRequired, useServerResources } from '@pterodactyl/sdk';
 import { startImport, type Connection, type Overview, type Transfer } from '../api';
 import { formatBytes, plural } from '../lib/format';
 import ConnectionBox, { type Connected } from './ConnectionBox';
+import FiltersField, { filterInput, noFilters } from './FiltersField';
 import FolderField from './FolderField';
 import RemoteBrowser from './RemoteBrowser';
 import WipeDialog from './WipeDialog';
@@ -19,7 +20,8 @@ interface Props {
 }
 
 export default function ImportForm({ overview, connection, connected, onConnection, initialTarget, busy, onStarted }: Props) {
-    const { identifier, name } = useCurrentServerRequired().attributes;
+    const { identifier, name, uuid } = useCurrentServerRequired().attributes;
+    const state = useServerResources(uuid, (data) => data.attributes.current_state).data;
     const [path, setPath] = useState(connected?.home ?? '/');
     const [selected, setSelected] = useState<string[]>([]);
     const [target, setTarget] = useState(initialTarget);
@@ -27,11 +29,13 @@ export default function ImportForm({ overview, connection, connected, onConnecti
     const [wipe, setWipe] = useState(false);
     const [archive, setArchive] = useState(true);
     const [confirming, setConfirming] = useState(false);
+    const [filters, setFilters] = useState(noFilters);
+    const running = wipe && state !== undefined && state !== 'offline' && state !== 'stopped';
 
     const open = (next: string) => (setPath(next), setSelected([]));
     const start = useMutation({
         mutationFn: (confirm?: string) =>
-            startImport(identifier, { ...connection, fingerprint: connected?.fingerprint, root: path, selection: selected, target, overwrite, wipe, archive: wipe && archive, confirm }),
+            startImport(identifier, { ...connection, fingerprint: connected?.fingerprint, root: path, selection: selected, target, overwrite, wipe, archive: wipe && archive, confirm, ...filterInput(filters) }),
         onSuccess: (transfer) => (setConfirming(false), toast.success('The import started.'), onStarted(transfer)),
         onError: (error) => toast.error(httpErrorToHuman(error)),
     });
@@ -58,17 +62,19 @@ export default function ImportForm({ overview, connection, connected, onConnecti
                 <TitledGreyBox title='Import into this server'>
                     <div className='xfer:grid xfer:gap-4'>
                         <FolderField id='xfer-import-target' label='Target folder' server={identifier} value={target} onChange={setTarget} />
+                        <FiltersField id='xfer-import-filters' value={filters} onChange={setFilters} />
                         <Switch checked={overwrite} onChange={setOverwrite} label='Overwrite existing files' description='Otherwise files that already exist are skipped.' />
-                        {overview.can.wipe && <Switch checked={wipe} onChange={setWipe} label='Wipe the target folder first' description='Deletes everything in the target folder before importing.' />}
+                        {overview.can.wipe && <Switch checked={wipe} onChange={setWipe} label='Wipe the target folder first' description='Deletes everything in the target folder before importing. The server has to be stopped.' />}
                         {wipe && overview.can.archive && (
                             <Switch checked={archive} onChange={setArchive} label='Save the current files as an archive first' description='The archive stays in the target folder.' />
                         )}
+                        {running && <p className='xfer:text-sm xfer:text-destructive'>Stop the server before wiping the folder. It is {state} right now.</p>}
                         <div className='xfer:flex xfer:flex-wrap xfer:items-center xfer:justify-between xfer:gap-3'>
                             <p className='xfer:text-xs xfer:text-muted-foreground'>
                                 {selected.length > 0 ? `${plural(selected.length, 'item')} from ${path}` : `Nothing ticked: the whole folder ${path} is imported`}. Files over{' '}
                                 {formatBytes(overview.limits.remote)} are skipped.
                             </p>
-                            <Button disabled={!connected || busy} isLoading={start.isPending && !confirming} onClick={() => (wipe ? setConfirming(true) : start.mutate(undefined))}>
+                            <Button disabled={!connected || busy || running} isLoading={start.isPending && !confirming} onClick={() => (wipe ? setConfirming(true) : start.mutate(undefined))}>
                                 Start import
                             </Button>
                         </div>

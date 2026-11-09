@@ -156,6 +156,8 @@ final class Transfer extends Model
                 'overwrite' => (bool) $this->option('overwrite', false),
                 'wipe' => (bool) $this->option('wipe', false),
                 'archive' => (bool) $this->option('archive', false),
+                'include' => array_values((array) $this->option('include', [])),
+                'exclude' => array_values((array) $this->option('exclude', [])),
             ],
             'archive' => $this->archive,
             'files' => [

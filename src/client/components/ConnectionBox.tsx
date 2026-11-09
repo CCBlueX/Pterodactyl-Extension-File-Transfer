@@ -38,8 +38,8 @@ export default function ConnectionBox({ protocols, value, connected, onChange, o
                     <Label htmlFor='xfer-protocol'>Protocol</Label>
                     <Select id='xfer-protocol' value={value.protocol} onChange={(protocol) => set({ protocol: String(protocol), port: null })} options={protocols} />
                 </div>
-                <div className='xfer:grid xfer:grid-cols-3 xfer:gap-4'>
-                    <div className='xfer:col-span-2'>
+                <div className='xfer:grid xfer:gap-4 xfer:sm:grid-cols-3'>
+                    <div className='xfer:sm:col-span-2'>
                         <Label htmlFor='xfer-host'>Host</Label>
                         <Input id='xfer-host' value={value.host} placeholder='files.example.com' autoComplete='off' onChange={(event) => set({ host: event.currentTarget.value })} />
                     </div>

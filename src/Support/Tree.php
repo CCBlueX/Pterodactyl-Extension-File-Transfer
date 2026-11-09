@@ -13,11 +13,12 @@ final class Tree
      * @param  string  $folder  The listed folder, relative to the source folder ("" for the source folder).
      * @param  list<Entry>  $entries
      * @param  list<string>  $only  Names to take from the source folder itself; empty takes everything.
-     * @return array{files: list<array{path: string, size: int}>, folders: list<string>, skipped: list<array{path: string, reason: string}>}
+     * @param  Patterns  $patterns  "folders" are listed next; only "create" become folders on the target.
+     * @return array{files: list<array{path: string, size: int}>, folders: list<string>, create: list<string>, skipped: list<array{path: string, reason: string}>}
      */
-    public static function expand(string $folder, array $entries, array $only = []): array
+    public static function expand(string $folder, array $entries, array $only = [], Patterns $patterns = new Patterns): array
     {
-        $result = ['files' => [], 'folders' => [], 'skipped' => []];
+        $result = ['files' => [], 'folders' => [], 'create' => [], 'skipped' => []];
         $filter = $folder === '' && $only !== [];
         $seen = [];
 
@@ -29,12 +30,20 @@ final class Tree
             $seen[] = $entry->name;
             $path = $folder === '' ? $entry->name : "{$folder}/{$entry->name}";
 
+            if (Paths::isName($entry->name) && ! $entry->link && ! $patterns->allows($path, $entry->directory)) {
+                continue;
+            }
+
             if (! Paths::isName($entry->name)) {
                 $result['skipped'][] = ['path' => $path, 'reason' => 'The name is not supported.'];
             } elseif ($entry->link) {
                 $result['skipped'][] = ['path' => $path, 'reason' => 'Links and special files are skipped.'];
             } elseif ($entry->directory) {
                 $result['folders'][] = $path;
+
+                if ($patterns->createsFolders()) {
+                    $result['create'][] = $path;
+                }
             } else {
                 $result['files'][] = ['path' => $path, 'size' => max(0, $entry->size)];
             }

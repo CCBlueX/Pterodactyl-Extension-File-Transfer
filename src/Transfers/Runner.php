@@ -15,6 +15,7 @@ use FileTransfer\Support\Budget;
 use FileTransfer\Support\Cursor;
 use FileTransfer\Support\Entry;
 use FileTransfer\Support\Paths;
+use FileTransfer\Support\Patterns;
 use FileTransfer\Support\Tree;
 use Illuminate\Support\Facades\DB;
 use Pterodactyl\Models\Server;
@@ -45,7 +46,7 @@ final readonly class Runner
     {
         $budget ??= new Budget(self::SECONDS);
         $cursor = $transfer->position();
-        $session = new Session($transfer, $this->clients);
+        $session = new Session($transfer, $this->clients, $this->settings->runConnectTimeout());
 
         try {
             if ($transfer->status === 'cancelling') {
@@ -182,6 +183,10 @@ final readonly class Runner
         $server = $this->server($transfer->target);
         $folder = $transfer->target_root;
 
+        if (($problem = $this->panel->running($server)) !== null) {
+            throw new RuntimeException($problem.' Nothing was deleted.');
+        }
+
         if (! $this->panel->exists($server, $folder)) {
             return true;
         }
@@ -217,12 +222,12 @@ final readonly class Runner
 
             $budget->worked();
             $tree = $entries === null
-                ? ['files' => [], 'folders' => [], 'skipped' => [['path' => $folder, 'reason' => $problem ?? 'The folder could not be listed.']]]
-                : Tree::expand($folder, $entries, $transfer->selection);
+                ? ['files' => [], 'folders' => [], 'create' => [], 'skipped' => [['path' => $folder, 'reason' => $problem ?? 'The folder could not be listed.']]]
+                : Tree::expand($folder, $entries, $transfer->selection, Patterns::fromOptions($transfer->options ?? []));
 
             DB::transaction(function () use ($transfer, $cursor, $tree): void {
                 $rows = [
-                    ...array_map(static fn (string $path): array => ['path' => $path, 'directory' => true, 'size' => 0, 'status' => 'pending', 'message' => null], $tree['folders']),
+                    ...array_map(static fn (string $path): array => ['path' => $path, 'directory' => true, 'size' => 0, 'status' => 'pending', 'message' => null], $tree['create']),
                     ...array_map(static fn (array $file): array => ['path' => $file['path'], 'directory' => false, 'size' => $file['size'], 'status' => 'pending', 'message' => null], $tree['files']),
                     ...array_map(static fn (array $skip): array => ['path' => $skip['path'], 'directory' => false, 'size' => 0, 'status' => 'skipped', 'message' => $skip['reason']], $tree['skipped']),
                 ];

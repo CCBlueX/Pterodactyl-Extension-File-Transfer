@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query';
 import { Button, Switch, TitledGreyBox, httpErrorToHuman, toast, useCurrentServerRequired } from '@pterodactyl/sdk';
 import { startExport, type Connection, type Overview, type Transfer } from '../api';
 import { formatBytes, plural } from '../lib/format';
+import FiltersField, { filterInput, noFilters } from './FiltersField';
 import ConnectionBox, { type Connected } from './ConnectionBox';
 import RemoteBrowser from './RemoteBrowser';
 import ServerBrowser from './ServerBrowser';
@@ -25,9 +26,10 @@ export default function ExportForm({ overview, connection, connected, onConnecti
     const [remote, setRemote] = useState(connected?.home ?? '/');
     const [archive, setArchive] = useState(false);
     const [overwrite, setOverwrite] = useState(false);
+    const [filters, setFilters] = useState(noFilters);
 
     const start = useMutation({
-        mutationFn: () => startExport(identifier, { ...connection, fingerprint: connected?.fingerprint, root: folder, selection: selected, target: remote, overwrite, archive }),
+        mutationFn: () => startExport(identifier, { ...connection, fingerprint: connected?.fingerprint, root: folder, selection: selected, target: remote, overwrite, archive, ...(archive ? {} : filterInput(filters)) }),
         onSuccess: (transfer) => (toast.success('The export started.'), onStarted(transfer)),
         onError: (error) => toast.error(httpErrorToHuman(error)),
     });
@@ -62,6 +64,7 @@ export default function ExportForm({ overview, connection, connected, onConnecti
                         {overview.can.archive && (
                             <Switch checked={archive} onChange={setArchive} label='Send as one archive' description='Packs the files into a .tar.gz first and removes it from the server afterwards.' />
                         )}
+                        {!archive && <FiltersField id='xfer-export-filters' value={filters} onChange={setFilters} />}
                         <Switch checked={overwrite} onChange={setOverwrite} label='Overwrite existing files' description='Otherwise files that already exist on the remote server are skipped.' />
                         <div className='xfer:flex xfer:flex-wrap xfer:items-center xfer:justify-between xfer:gap-3'>
                             <p className='xfer:text-xs xfer:text-muted-foreground'>
